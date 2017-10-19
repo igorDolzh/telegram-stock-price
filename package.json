@@ -1,0 +1,17 @@
+{
+  "name": "telegram-tinkoff-api",
+  "version": "0.0.1",
+  "description": "Code for asking tinikoff about stock changes",
+  "main": "index.js",
+  "scripts": {
+    "test": "jest"
+  },
+  "author": "igor.techweb@gmail.com",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^0.16.2"
+  },
+  "devDependencies": {
+    "axios": "^0.16.2"
+  }
+}
