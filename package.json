@@ -12,6 +12,7 @@
     "axios": "^0.16.2"
   },
   "devDependencies": {
-    "axios": "^0.16.2"
+    "axios": "^0.16.2",
+    "node-telegram-bot-api": "^0.28.0"
   }
 }
