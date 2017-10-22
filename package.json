@@ -4,15 +4,18 @@
   "description": "Code for asking tinikoff about stock changes",
   "main": "index.js",
   "scripts": {
+    "start": "micro",
     "test": "jest"
   },
   "author": "igor.techweb@gmail.com",
   "license": "ISC",
   "dependencies": {
-    "axios": "^0.16.2"
+    "axios": "^0.16.2",
+    "micro": "latest"
   },
   "devDependencies": {
     "axios": "^0.16.2",
-    "node-telegram-bot-api": "^0.28.0"
+    "node-telegram-bot-api": "^0.28.0",
+    "micro": "latest"
   }
 }
