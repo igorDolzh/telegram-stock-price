@@ -1,6 +1,23 @@
 const axios = require('axios')
 const config = require('./config')
+var MongoClient = require('mongodb').MongoClient
+var mongoose = require('mongoose');
+var assert = require('assert');
 
+// Connection URL
+var url = config.mongodb;
+
+// Use connect method to connect to the server
+
+mongoose.connect(url, { useMongoClient: true });
+mongoose.Promise = global.Promise;
+
+var StockBuy = mongoose.model('StockBuy', { name: String, value: Number });
+
+StockBuy.find(function (err, kittens) {
+  if (err) return console.error(err);
+  console.log(kittens);
+})
 let Stocks = {
   VISA: 'V',
   MICRON: 'MU',
@@ -102,14 +119,35 @@ function trackStock(ticker, {
     .then(res => {
       let { name, priceBuy, priceSell } = extractData(res)
       if (!storeBuy[ticker]) {
-        storeBuy[ticker] = priceBuy
+        storeBuy[ticker] = {
+          name: ticker,
+          value: priceBuy
+        }
+        var stockbuy = new StockBuy(storeBuy[ticker]);
+        stockbuy.save(function (err) {
+          if (err) {
+            console.log(err);
+          } else {
+            console.log('db',storeBuy[ticker]);
+          }
+        });
       }
       
-      let previousPrice = storeBuy[ticker]
+      let previousPrice = storeBuy[ticker].value
       let change = (Math.abs(previousPrice - priceBuy) / previousPrice)
       console.log('priceBuy',priceBuy, storeBuy[ticker], change)
+
+
+      
       if (change > step) {
-        storeBuy[ticker] = priceBuy
+        storeBuy[ticker].value = priceBuy
+        storeBuy[ticker].save(function (err) {
+          if (err) {
+            console.log(err);
+          } else {
+            console.log('db',storeBuy[ticker]);
+          }
+        });
         let prieterChange = `${change * 100}%`
         sendMessage(`${name}: Current price:${priceBuy} Previous Price:${previousPrice} Change: ${prieterChange}`)
       }
@@ -126,9 +164,22 @@ function notifyByPriceInterval({ stock, interval = defaultInterval, buy, sell}) 
 function notifyByPriceIntervalArray(array) {
   array.forEach(notifyByPriceInterval)
 }
-setInterval( () => trackStock(Stocks.VISA, {
+
+function trackStockMongo(ticker, options) {
+  StockBuy.findOne({ name: ticker }, (err, stock) => {
+    console.log('StockBuy',ticker,stock);
+    storeBuy[ticker] = stock
+    setInterval(() => trackStock(ticker,options), 3000)
+  });
+}
+
+trackStockMongo(Stocks.VISA, {
   step: 0.001
-}), 3000)
+})
+trackStockMongo(Stocks.MICRON, {
+  step: 0.001
+})
+
 
 
 module.exports = () => {
