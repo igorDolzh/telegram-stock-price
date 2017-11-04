@@ -13,11 +13,18 @@ mongoose.connect(url, { useMongoClient: true });
 mongoose.Promise = global.Promise;
 
 var StockBuy = mongoose.model('StockBuy', { name: String, value: Number });
+var StockSell = mongoose.model('StockSell', { name: String, value: Number });
 
-StockBuy.find(function (err, kittens) {
+StockBuy.find(function (err, stocks) {
   if (err) return console.error(err);
-  console.log(kittens);
+  console.log(stocks);
 })
+
+StockSell.find(function (err, stocks) {
+  if (err) return console.error(err);
+  console.log(stocks);
+})
+
 let Stocks = {
   VISA: 'V',
   MICRON: 'MU',
@@ -51,11 +58,19 @@ let Stocks = {
   COGNIZANT: 'CTSH'
 }
 
+let StocksSell = {
+  VISA: 'V',
+  BLIZZARD: 'ATVI',
+  MICROSOFT: 'MSFT',
+}
+
 let storeBuy = {
+  type: 'buy',
   [Stocks.VISA] : 108.4
 }
 
 let storeSell = {
+  type: 'sell',
 }
 
 let defaultInterval = 300000
@@ -113,43 +128,52 @@ function notifyByPrice(ticker, {
 }
 
 function trackStock(ticker, {
-  step = 0.01
+  step = 0.01,
+  send = false,
+  trackType = storeBuy,
+  trackMethod = StockBuy
 }) {
   axios.get(`https://api.tinkoff.ru/trading/stocks/get?ticker=${ticker}`)
     .then(res => {
       let { name, priceBuy, priceSell } = extractData(res)
-      if (!storeBuy[ticker]) {
-        storeBuy[ticker] = {
+      let { type } = trackType
+      let price = type === 'buy' ? priceBuy : priceSell
+
+      if (!trackType[ticker]) {
+        trackType[ticker] = {
           name: ticker,
-          value: priceBuy
+          value: price
         }
-        var stockbuy = new StockBuy(storeBuy[ticker]);
-        stockbuy.save(function (err) {
+        var stock = new trackMethod(trackType[ticker]);
+        stock.save(function (err) {
           if (err) {
             console.log(err);
           } else {
-            console.log('db',storeBuy[ticker]);
+            console.log('db',trackType[ticker]);
           }
         });
       }
       
-      let previousPrice = storeBuy[ticker].value
-      let change = (Math.abs(previousPrice - priceBuy) / previousPrice)
-      console.log('priceBuy',priceBuy, storeBuy[ticker], change)
+      let previousPrice = trackType[ticker].value
+      let change = (Math.abs(previousPrice - price) / previousPrice)
+      console.log('price' , type, price, trackType[ticker], change)
 
 
       
       if (change > step) {
-        storeBuy[ticker].value = priceBuy
-        storeBuy[ticker].save(function (err) {
+        trackType[ticker].value = price
+        trackType[ticker].save(function (err) {
           if (err) {
             console.log(err);
           } else {
-            console.log('db',storeBuy[ticker]);
+            console.log('db',trackType[ticker]);
           }
         });
         let prieterChange = `${change * 100}%`
-        sendMessage(`${name}: Current price:${priceBuy} Previous Price:${previousPrice} Change: ${prieterChange}`)
+        sendMessage(`${type}: ${name}: Current price:${price} Previous Price:${previousPrice} Change: ${prieterChange}`)
+      } else if (send) {
+        let prieterChange = `${change * 100}%`
+        sendMessage(`Start tracking for: ${type}: ${name}: Current price:${price} Previous Price:${previousPrice} Change: ${prieterChange}`)
       }
     })
 }
@@ -166,25 +190,50 @@ function notifyByPriceIntervalArray(array) {
 }
 
 function trackStockMongo(ticker, options) {
-  StockBuy.findOne({ name: ticker }, (err, stock) => {
-    console.log('StockBuy',ticker,stock);
-    storeBuy[ticker] = stock
-    setInterval(() => trackStock(ticker,options), 3000)
+  let { trackType, trackMethod, step } = options
+  trackMethod.findOne({ name: ticker }, (err, stock) => {
+    console.log(trackType.type, ticker, stock);
+    trackType[ticker] = stock
+    trackStock(ticker, {
+      trackType,
+      trackMethod,
+      step,
+      send: true
+    })
+    setInterval(() => trackStock(ticker,options), 60000)
   });
 }
 
-trackStockMongo(Stocks.VISA, {
-  step: 0.001
-})
-trackStockMongo(Stocks.MICRON, {
-  step: 0.001
-})
+function trackBundle(Stocks, options) {
+  let keys = Object.keys(Stocks)
+  keys.forEach((key) => {
+    console.log('trackBundle', key)
+    trackStockMongo(Stocks[key], options)
+  })
+}
 
 
+trackBundle(Stocks, {
+  trackType:storeBuy,
+  trackMethod:StockBuy,
+  step:0.01
+})
+trackBundle(StocksSell, {
+  trackType:storeSell,
+  trackMethod:StockSell,
+  step:0.005
+})
 
 module.exports = () => {
-  trackStock(Stocks.VISA, {
-    step: 0.001
+  trackBundle(Stocks, {
+    trackType:storeBuy,
+    trackMethod:StockBuy,
+    step:0.01
+  })
+  trackBundle(StocksSell, {
+    trackType:storeSell,
+    trackMethod:StockSell,
+    step:0.005
   })
   // trackStock(Stocks.VISA, {
   //   step: 0.001
