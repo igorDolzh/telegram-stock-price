@@ -62,6 +62,7 @@ let StocksSell = {
   VISA: 'V',
   BLIZZARD: 'ATVI',
   MICROSOFT: 'MSFT',
+  CHINA: 'FXCN'
 }
 
 let storeBuy = {
@@ -213,16 +214,16 @@ function trackBundle(Stocks, options) {
 }
 
 
-trackBundle(Stocks, {
-  trackType:storeBuy,
-  trackMethod:StockBuy,
-  step:0.01
-})
-trackBundle(StocksSell, {
-  trackType:storeSell,
-  trackMethod:StockSell,
-  step:0.005
-})
+// trackBundle(Stocks, {
+//   trackType:storeBuy,
+//   trackMethod:StockBuy,
+//   step:0.01
+// })
+// trackBundle(StocksSell, {
+//   trackType:storeSell,
+//   trackMethod:StockSell,
+//   step:0.005
+// })
 
 module.exports = () => {
   trackBundle(Stocks, {
