@@ -66,6 +66,7 @@ let StocksSell = {
   MICROSOFT: 'MSFT',
   CHINA: 'FXCN',
   AEROFLOT: 'AFLT',
+  TINKOFF: 'TCS',
 }
 
 let storeBuy = {
