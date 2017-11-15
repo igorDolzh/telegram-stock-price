@@ -38,6 +38,8 @@ let Stocks = {
   ALIBABA: 'BABA',
   DOLLARTREE: 'DLTR',
   MASTERCARD: 'MA',
+  AEROFLOT: 'AFLT',
+  SBERBANK: 'SBER',
   YY: 'YY',
   NVIDIA: 'NVDA',
   WEIBO: 'WB',
@@ -62,7 +64,8 @@ let StocksSell = {
   VISA: 'V',
   BLIZZARD: 'ATVI',
   MICROSOFT: 'MSFT',
-  CHINA: 'FXCN'
+  CHINA: 'FXCN',
+  AEROFLOT: 'AFLT',
 }
 
 let storeBuy = {
@@ -136,6 +139,10 @@ function trackStock(ticker, {
 }) {
   axios.get(`https://api.tinkoff.ru/trading/stocks/get?ticker=${ticker}`)
     .then(res => {
+      if (ticker === 'VISA') {
+        sendMessage('VISA WOW')
+      }
+
       let { name, priceBuy, priceSell } = extractData(res)
       let { type } = trackType
       let price = type === 'buy' ? priceBuy : priceSell
@@ -214,28 +221,28 @@ function trackBundle(Stocks, options) {
 }
 
 
-// trackBundle(Stocks, {
-//   trackType:storeBuy,
-//   trackMethod:StockBuy,
-//   step:0.01
-// })
-// trackBundle(StocksSell, {
-//   trackType:storeSell,
-//   trackMethod:StockSell,
-//   step:0.005
-// })
+trackBundle(Stocks, {
+  trackType:storeBuy,
+  trackMethod:StockBuy,
+  step:0.01
+})
+trackBundle(StocksSell, {
+  trackType:storeSell,
+  trackMethod:StockSell,
+  step:0.005
+})
 
 module.exports = () => {
-  trackBundle(Stocks, {
-    trackType:storeBuy,
-    trackMethod:StockBuy,
-    step:0.01
-  })
-  trackBundle(StocksSell, {
-    trackType:storeSell,
-    trackMethod:StockSell,
-    step:0.005
-  })
+  // trackBundle(Stocks, {
+  //   trackType:storeBuy,
+  //   trackMethod:StockBuy,
+  //   step:0.01
+  // })
+  // trackBundle(StocksSell, {
+  //   trackType:storeSell,
+  //   trackMethod:StockSell,
+  //   step:0.005
+  // })
   // trackStock(Stocks.VISA, {
   //   step: 0.001
   // })

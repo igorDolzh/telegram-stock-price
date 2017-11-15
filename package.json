@@ -12,6 +12,7 @@
   "dependencies": {
     "assert": "^1.4.1",
     "axios": "^0.16.2",
+    "express": "^4.16.2",
     "micro": "latest",
     "mongodb": "^2.2.33",
     "mongoose": "^4.11.7"
