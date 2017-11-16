@@ -16,13 +16,13 @@ var StockBuy = mongoose.model('StockBuy', { name: String, value: Number });
 var StockSell = mongoose.model('StockSell', { name: String, value: Number });
 
 StockBuy.find(function (err, stocks) {
-  if (err) return console.error(err);
-  console.log(stocks);
+  // if (err) return console.error(err);
+  // console.log(stocks);
 })
 
 StockSell.find(function (err, stocks) {
-  if (err) return console.error(err);
-  console.log(stocks);
+  // if (err) return console.error(err);
+  // console.log(stocks);
 })
 
 let Stocks = {
@@ -156,16 +156,16 @@ function trackStock(ticker, {
         var stock = new trackMethod(trackType[ticker]);
         stock.save(function (err) {
           if (err) {
-            console.log(err);
+            // console.log(err);
           } else {
-            console.log('db',trackType[ticker]);
+            // console.log('db',trackType[ticker]);
           }
         });
       }
       
       let previousPrice = trackType[ticker].value
       let change = (Math.abs(previousPrice - price) / previousPrice)
-      console.log('price' , type, price, trackType[ticker], change)
+      // console.log('price' , type, price, trackType[ticker], change)
 
 
       
@@ -173,9 +173,9 @@ function trackStock(ticker, {
         trackType[ticker].value = price
         trackType[ticker].save(function (err) {
           if (err) {
-            console.log(err);
+            // console.log(err);
           } else {
-            console.log('db',trackType[ticker]);
+            // console.log('db',trackType[ticker]);
           }
         });
         let prieterChange = `${change * 100}%`
@@ -216,7 +216,7 @@ function trackStockMongo(ticker, options) {
 function trackBundle(Stocks, options) {
   let keys = Object.keys(Stocks)
   keys.forEach((key) => {
-    console.log('trackBundle', key)
+    // console.log('trackBundle', key)
     trackStockMongo(Stocks[key], options)
   })
 }
