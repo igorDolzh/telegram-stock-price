@@ -203,35 +203,72 @@ function trackStockMongo(ticker, options) {
   trackMethod.findOne({ name: ticker }, (err, stock) => {
     console.log(trackType.type, ticker, stock);
     trackType[ticker] = stock
-    trackStock(ticker, {
-      trackType,
-      trackMethod,
-      step,
-      send: true
-    })
-    setInterval(() => trackStock(ticker,options), 60000)
+    trackStock(ticker,options)
   });
 }
 
 function trackBundle(Stocks, options) {
   let keys = Object.keys(Stocks)
   keys.forEach((key) => {
-    // console.log('trackBundle', key)
-    trackStockMongo(Stocks[key], options)
+    if (options.send) {
+      trackStockMongo(Stocks[key], options)
+    } else {
+      trackStock(ticker,options)
+    }
   })
 }
 
+function theDayOfTheWeek() {
+  return (new Date()).getDay()
+}
 
-trackBundle(Stocks, {
-  trackType:storeBuy,
-  trackMethod:StockBuy,
-  step:0.01
-})
-trackBundle(StocksSell, {
-  trackType:storeSell,
-  trackMethod:StockSell,
-  step:0.005
-})
+function shouldUpdate() {
+  let day = theDayOfTheWeek()
+  if (day === 6 || day === 0){
+    return false
+  }
+  return true
+}
+
+function launch() {
+  trackBundle(Stocks, {
+    trackType:storeBuy,
+    trackMethod:StockBuy,
+    step:0.01,
+    send: true
+  })
+  
+  trackBundle(StocksSell, {
+    trackType:storeSell,
+    trackMethod:StockSell,
+    step:0.005,
+    send: true
+  })
+  
+  let buyInterval = setInterval(() => {
+    if (shouldUpdate()) {
+      trackBundle(Stocks, {
+        trackType:storeBuy,
+        trackMethod:StockBuy,
+        step:0.01
+      })
+    }
+  }, 60000)
+  
+  let sellInterval = setInterval(() => {
+    if (shouldUpdate()) {
+      trackBundle(StocksSell, {
+        trackType:storeSell,
+        trackMethod:StockSell,
+        step:0.005
+      })
+    }
+  }, 60000)
+
+}
+
+launch()
+
 
 module.exports = () => {
   // trackBundle(Stocks, {
