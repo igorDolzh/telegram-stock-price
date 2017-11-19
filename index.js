@@ -88,6 +88,13 @@ function sendMessage(text) {
       chat_id: config.chatId
     }
   )
+  axios.post(
+    `https://api.telegram.org/bot${config.token}/sendMessage`,
+    {
+      text: text,
+      chat_id: config.chatZhuId
+    }
+  )  
 }
 
 function extractData(res) {
