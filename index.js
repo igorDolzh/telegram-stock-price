@@ -220,7 +220,7 @@ function trackBundle(Stocks, options) {
     if (options.send) {
       trackStockMongo(Stocks[key], options)
     } else {
-      trackStock(ticker,options)
+      trackStock(Stocks[key],options)
     }
   })
 }
