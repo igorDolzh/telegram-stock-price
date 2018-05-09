@@ -3,9 +3,10 @@ const config = require('./config')
 var MongoClient = require('mongodb').MongoClient
 var mongoose = require('mongoose');
 var assert = require('assert');
+var express = require('express')
 
 // Connection URL
-var url = config.mongodb;
+var url = config.mongodb
 
 // Use connect method to connect to the server
 
@@ -41,6 +42,7 @@ let Stocks = {
   AEROFLOT: 'AFLT',
   SBERBANK: 'SBER',
   YY: 'YY',
+  AMZN: 'AMZN',
   NVIDIA: 'NVDA',
   WEIBO: 'WB',
   FIRSTSOLAR: 'FSLR',
@@ -61,12 +63,9 @@ let Stocks = {
 }
 
 let StocksSell = {
-  VISA: 'V',
-  BLIZZARD: 'ATVI',
-  MICROSOFT: 'MSFT',
-  CHINA: 'FXCN',
-  AEROFLOT: 'AFLT',
-  TINKOFF: 'TCS',
+  BABA: 'BABA',
+  AMAT: 'AMAT',
+  PYPL: 'PYPL'
 }
 
 let storeBuy = {
@@ -87,7 +86,7 @@ function sendMessage(text) {
       text: text,
       chat_id: config.chatId
     }
-  )
+  ).catch((err) => console.error(err))
   axios.post(
     `https://api.telegram.org/bot${config.token}/sendMessage`,
     {
@@ -139,6 +138,24 @@ function notifyByPrice(ticker, {
   })
 }
 
+function notifyByPriceCur(ticker, {
+  buy = {}, sell = {}
+}) {
+  axios.get(`https://api.tinkoff.ru/trading/currency/price?ticker=${ticker}`)
+  .then(res => {
+    let { priceBuy, priceSell } = extractData(res)
+
+    if ((buy.lower && (priceBuy < buy.lower)) || (sell.lower && (priceSell < sell.lower))){
+      sendMessage(`${ticker}: Buy:${priceBuy} Sell:${priceSell}`)
+    }
+    if ((buy.greater && (priceBuy > buy.greater)) || (sell.greater && (priceSell > sell.greater))) {
+      sendMessage(`${ticker}: Buy:${priceBuy} Sell:${priceSell}`)
+    }
+  })
+}
+
+USDRUB
+
 function trackStock(ticker, {
   step = 0.01,
   send = false,
@@ -147,10 +164,6 @@ function trackStock(ticker, {
 }) {
   axios.get(`https://api.tinkoff.ru/trading/stocks/get?ticker=${ticker}`)
     .then(res => {
-      if (ticker === 'VISA') {
-        sendMessage('VISA WOW')
-      }
-
       let { name, priceBuy, priceSell } = extractData(res)
       let { type } = trackType
       let price = type === 'buy' ? priceBuy : priceSell
@@ -194,8 +207,15 @@ function trackStock(ticker, {
     })
 }
 
-function notifyByPriceInterval({ stock, interval = defaultInterval, buy, sell}) {
+function notifyByPriceInterval({ stock, interval = defaultInterval, buy, sell }) {
   setInterval(() => notifyByPrice(stock, {
+    buy,
+    sell
+  }), interval)
+}
+
+function notifyByPriceCurInterval({ stock, interval = defaultInterval, buy, sell }) {
+  setInterval(() => notifyByPriceCur(stock, {
     buy,
     sell
   }), interval)
@@ -237,181 +257,156 @@ function shouldUpdate() {
   return true
 }
 
-function launch() {
-  trackBundle(Stocks, {
-    trackType:storeBuy,
-    trackMethod:StockBuy,
-    step:0.01,
-    send: true
-  })
-  
-  trackBundle(StocksSell, {
-    trackType:storeSell,
-    trackMethod:StockSell,
-    step:0.005,
-    send: true
-  })
-  
-  let buyInterval = setInterval(() => {
-    if (shouldUpdate()) {
-      trackBundle(Stocks, {
-        trackType:storeBuy,
-        trackMethod:StockBuy,
-        step:0.01
+function trackCrypto({
+  step = 0.01
+}) {
+  axios.get(`https://api.coinmarketcap.com/v1/ticker?limit=10`)
+    .then(res => {
+      let message = ''
+      // console.log(res)
+      res.data.forEach((coin) => {
+        let { symbol: ticker, price_usd: price, name } = coin
+        if (!storeBuy[ticker]) {
+          var stock = new StockBuy(storeBuy[ticker]);
+          StockBuy.findOne({ name: ticker }, (err, stock) => {
+            storeBuy[ticker] = stock
+          });
+          stock.save(function (err) {
+            if (err) {
+              // console.log(err);
+            } else {
+              // console.log('db',trackType[ticker]);
+            }
+          });
+        }
+        if (storeBuy[ticker]) {
+          let previousPrice = storeBuy[ticker].value
+          let change = (Math.abs(previousPrice - price) / previousPrice)
+          // console.log('price' , type, price, trackType[ticker], change)
+          
+    
+          //console.log('storeBuy[ticker]',storeBuy[ticker])
+          if (change > step) {
+            storeBuy[ticker].value = price
+            console.log('go go', storeBuy[ticker])
+            storeBuy[ticker].save(function (err) {
+              if (err) {
+                // console.log(err);
+              } else {
+                // console.log('db',trackType[ticker]);
+              }
+            });
+            let prieterChange = `${change * 100}%`
+            message += `\n\n${name}: Current price:${price} Previous Price:${previousPrice} Change: ${prieterChange}`
+            if (message.length > 1000) {
+              sendMessage(message)
+              message = ''
+            }
+          }
+        }
+
       })
-    }
-  }, 60000)
+      if (message) {
+        sendMessage(message)
+        message = ''
+      }
+    })
+  }
+
+
+
+function launch() {
+  // trackBundle(Stocks, {
+  //   trackType:storeBuy,
+  //   trackMethod:StockBuy,
+  //   step:0.01,
+  //   send: true
+  // })
+  
+  // trackBundle(StocksSell, {
+  //   trackType:storeSell,
+  //   trackMethod:StockSell,
+  //   step:0.005,
+  //   send: true
+  // })
+  
+  // let buyInterval = setInterval(() => {
+  //   if (shouldUpdate()) {
+  //     trackBundle(Stocks, {
+  //       trackType:storeBuy,
+  //       trackMethod:StockBuy,
+  //       step:0.01
+  //     })
+  //   }
+  // }, 60000)
   
   let sellInterval = setInterval(() => {
-    if (shouldUpdate()) {
+    // if (shouldUpdate()) {
       trackBundle(StocksSell, {
         trackType:storeSell,
         trackMethod:StockSell,
         step:0.005
       })
-    }
+    // }
   }, 60000)
+  trackCrypto({ step: 0.01 })
+  setInterval(() => trackCrypto({ step: 0.01 }), 10000)
 
 }
 
-launch()
+// var app = express()
+
+// app.get('/', function (req, res) {
+//   res.send('hello world')
+//   launch()
+// })
 
 
-module.exports = () => {
-  // trackBundle(Stocks, {
-  //   trackType:storeBuy,
-  //   trackMethod:StockBuy,
-  //   step:0.01
-  // })
-  // trackBundle(StocksSell, {
-  //   trackType:storeSell,
-  //   trackMethod:StockSell,
-  //   step:0.005
-  // })
-  // trackStock(Stocks.VISA, {
-  //   step: 0.001
-  // })
-  // notifyByPriceIntervalArray([
-  //   {
-  //     stock: Stocks.VISA,
-  //     buy: {
-  //       lower: 107,
-  //       greater: 108
-  //     },
-  //     sell: {
-  //       lower: 107,
-  //       greater: 108
-  //     }
-  //   },
-  //   {
-  //     stock: Stocks.MICRON,
-  //     buy: {
-  //       lower: 40,
-  //       greater: 42
-  //     }
-  //   },
-  //   {
-  //     stock: Stocks.BLIZZARD,
-  //     buy: {
-  //       lower: 61
-  //     },
-  //     sell: {
-  //       greater: 63
-  //     }
-  //   },
-  //   {
-  //     stock: Stocks.APPLE,
-  //     buy: {
-  //       lower: 152,
-  //       greater: 159
-  //     }
-  //   },
-  //   {
-  //     stock: Stocks.PAYPALL,
-  //     buy: {
-  //       lower: 65,
-  //       greater: 73
-  //     }
-  //   },
-  //   {
-  //     stock: Stocks.FACEBOOK,
-  //     buy: {
-  //       lower: 165,
-  //       greater: 180
-  //     }
-  //   },
-  //   {
-  //     stock: Stocks.ELECTRONIC,
-  //     buy: {
-  //       lower: 110,
-  //       greater: 115
-  //     }
-  //   },
-  //   {
-  //     stock: Stocks.ADOBE,
-  //     buy: {
-  //       lower: 150,
-  //       greater: 180
-  //     }
-  //   },
-  //   {
-  //     stock: Stocks.ALIBABA,
-  //     buy: {
-  //       lower: 170,
-  //       greater: 180
-  //     }
-  //   },
-  //   {
-  //     stock: Stocks.DOLLARTREE,
-  //     buy: {
-  //       lower: 90,
-  //       greater: 95
-  //     }
-  //   },
-  //   {
-  //     stock: Stocks.MASTERCARD,
-  //     buy: {
-  //       lower: 140,
-  //       greater: 150
-  //     }
-  //   },
-  //   {
-  //     stock: Stocks.YY,
-  //     buy: {
-  //       lower: 90,
-  //       greater: 100
-  //     }
-  //   },
-  //   {
-  //     stock: Stocks.CHINALODGING,
-  //     buy: {
-  //       lower: 130,
-  //       greater: 150
-  //     }
-  //   },
-  //   {
-  //     stock: Stocks.SOHU,
-  //     buy: {
-  //       lower: 57,
-  //       greater: 70
-  //     }
-  //   },
-  //   {
-  //     stock: Stocks.INTEL,
-  //     buy: {
-  //       lower: 39,
-  //       greater: 42
-  //     }
-  //   },
-  //   {
-  //     stock: Stocks.JOBS,
-  //     buy: {
-  //       lower: 60,
-  //       greater: 65
-  //     }
-  //   }
-  // ])
-}
+// var server = app.listen(3000, () => console.log('Example app listening on port 3000!'))
+
+// server.on('close', function(done) {
+//   console.log('Closing simple example app port %s', 3000);
+// });
+// launch()
+
+notifyByPriceCurInterval({
+        stock: 'USDRUB',
+        buy: {
+          lower: 62
+        },
+        sell: {
+          greater: 62
+        }
+      })
+// module.exports = () => {
+//   launch()
+//   // trackBundle(Stocks, {
+//   //   trackType:storeBuy,
+//   //   trackMethod:StockBuy,
+//   //   step:0.01
+//   // })
+//   // trackBundle(StocksSell, {
+//   //   trackType:storeSell,
+//   //   trackMethod:StockSell,
+//   //   step:0.005
+//   // })
+//   // trackStock(Stocks.VISA, {
+//   //   step: 0.001
+//   // })
+//   notifyByPriceIntervalArray([
+//     {
+//       stock: Stocks.AMZN,
+//       buy: {
+//         lower: 1150,
+//         greater: 1210
+//       },
+//       sell: {
+//         lower: 1150,
+//         greater: 1210
+//       }
+//     },
+//   ])
+// }
 
 
 
