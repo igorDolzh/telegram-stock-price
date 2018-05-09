@@ -87,13 +87,13 @@ function sendMessage(text) {
       chat_id: config.chatId
     }
   ).catch((err) => console.error(err))
-  axios.post(
-    `https://api.telegram.org/bot${config.token}/sendMessage`,
-    {
-      text: text,
-      chat_id: config.chatZhuId
-    }
-  )  
+  // axios.post(
+  //   `https://api.telegram.org/bot${config.token}/sendMessage`,
+  //   {
+  //     text: text,
+  //     chat_id: config.chatZhuId
+  //   }
+  // )  
 }
 
 function extractData(res) {
@@ -104,6 +104,17 @@ function extractData(res) {
   let name = payload.symbol.showName
   return {
     name,
+    priceBuy,
+    priceSell
+  }
+}
+
+function extractDataCur(res) {
+  const { data } = res
+  let { payload } = data
+  let priceBuy = payload.buy.value
+  let priceSell = payload.sell.value
+  return {
     priceBuy,
     priceSell
   }
@@ -141,9 +152,11 @@ function notifyByPrice(ticker, {
 function notifyByPriceCur(ticker, {
   buy = {}, sell = {}
 }) {
+  console.log('kek',ticker)
   axios.get(`https://api.tinkoff.ru/trading/currency/price?ticker=${ticker}`)
   .then(res => {
-    let { priceBuy, priceSell } = extractData(res)
+    let { priceBuy, priceSell } = extractDataCur(res)
+    console.log('priceBuy', priceBuy)
 
     if ((buy.lower && (priceBuy < buy.lower)) || (sell.lower && (priceSell < sell.lower))){
       sendMessage(`${ticker}: Buy:${priceBuy} Sell:${priceSell}`)
@@ -153,8 +166,6 @@ function notifyByPriceCur(ticker, {
     }
   })
 }
-
-USDRUB
 
 function trackStock(ticker, {
   step = 0.01,
@@ -215,6 +226,7 @@ function notifyByPriceInterval({ stock, interval = defaultInterval, buy, sell })
 }
 
 function notifyByPriceCurInterval({ stock, interval = defaultInterval, buy, sell }) {
+  console.log('kek', interval)
   setInterval(() => notifyByPriceCur(stock, {
     buy,
     sell
@@ -372,11 +384,8 @@ function launch() {
 notifyByPriceCurInterval({
         stock: 'USDRUB',
         buy: {
-          lower: 62
+          lower: 62.5
         },
-        sell: {
-          greater: 62
-        }
       })
 // module.exports = () => {
 //   launch()
